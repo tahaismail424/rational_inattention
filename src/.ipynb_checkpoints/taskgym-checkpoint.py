@@ -27,7 +27,7 @@ class HaydenRiskTrial(gym.Env):
     action space: 3D (choose left, fixate, choose right)
     time discretization: 50ms
     """
-    def __init__(self, offer_probs=(0.125, 0.4375, 0.4375), offer_amounts=(1,2,3), penalty_no_choice=-0.1, penalty_break_fixation=-0.1, penalty_hyperactive=-0.1):
+    def __init__(self, offer_probs=(0.125, 0.4375, 0.4375), offer_amounts=(1,2,3), penalty_no_choice=-0.1, penalty_break_fixation=-0.1, penalty_hyperactive=-0.1, reward_choice_made=0.0):
         self.observation_space = spaces.Box(low=0, high=1, shape=(9,), dtype=np.float32) # offer1 (4D), offer2 (4D), fixation
         self.action_space = spaces.Discrete(3) # fixate, choose left, choose right
         self.offer_probs = offer_probs # probability of each stake, per offer
@@ -36,6 +36,7 @@ class HaydenRiskTrial(gym.Env):
         self.penalty_no_choice = penalty_no_choice
         self.penalty_break_fixation = penalty_break_fixation
         self.penalty_hyperactive = penalty_hyperactive
+        self.reward_choice_made = reward_choice_made
         self.epoch_durations = {'iti': 16, 'offer1': 8, 'offer2': 8, 'pause1': 12, 'pause2': 12, 'fixation': 2, 'choice': 5, 'feedback': 5}
         self.epoch_order = ['iti', 'offer1', 'pause1', 'offer2', 'pause2', 'fixation', 'choice', 'feedback']
         self.rng = default_rng() # random number generator
@@ -107,11 +108,12 @@ class HaydenRiskTrial(gym.Env):
             # get the reward from the chosen offer
             self.state['choice'] = action
             self.state['r'] = self.state['offer{}'.format(action)]['r_if_chosen']
+            self.choice_made = True
+            return self.reward_choice_made
         elif cur_epoch == 'feedback':
             if self.state['r'] is None: # no action was chosen during choice period
                 self.state['r'] = self.penalty_no_choice
                 self.state['choice'] = 0
-                self.choice_made = True
             return self.state['r']
         elif cur_epoch == 'fixation':
             if action != 0:
